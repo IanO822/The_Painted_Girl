@@ -38,7 +38,7 @@ BGRAY = 100, 100, 100
 IGRAY = 80, 84, 92
 PURPLE = 148, 0, 211
 DCGRAY = 49, 51, 56
-BACKGROUND_COLOR = 14, 209, 69
+BACKGROUND_COLOR = 0, 255, 0
 #稀有度顏色
 COMMON = (195, 195, 195)
 UNCOMMON = (181, 230, 29)
@@ -95,7 +95,7 @@ now = datetime.datetime.now()
 
 #圖片
 def import_img(img_name, removeBG=True, scale=1):
-    img = pygame.image.load(os.path.join("resource", img_name + ".png")).convert_alpha()
+    img = pygame.image.load(os.path.join("resource", img_name + ".png")).convert()
     if removeBG:
         img.set_colorkey(BACKGROUND_COLOR)
     # 等比縮放
@@ -110,13 +110,16 @@ player_imgs = {}
 agent_imgs = {}
 
 for i in range(3):
-    player_imgs.update({i+1:import_img("player_"+ str(i+1), True, 0.5)})
+    player_imgs.update({i+1:import_img("player_"+ str(i+1), True, 0.2)})
     agent_imgs.update({i+1:import_img("agent_"+ str(i+1))})
+
+#物件
+car_img = import_img("car", True, 2.5)
 
 #背景
 area_background_imgs = {}
-for i in range(3):
-    area_background_imgs.update({str(i+1):import_img("area_" + str(i+1))})
+for i in range(4):
+    area_background_imgs.update({str(i):import_img("area_" + str(i))})
 
 #按鈕
 empty_button_img = import_img("empty_button") 
@@ -199,7 +202,7 @@ def scrolling_background(first_load = False):
         background_location_y = 0
         player_move_count_temp = 0
     #檢測更換區域
-    new_area = (Player_location.coord_x // 1000) + 1
+    new_area = (Player_location.coord_x // 900) + 1
     if Areas.area != new_area:
         Areas.area = new_area
         Areas.lock_right = False
@@ -218,27 +221,27 @@ def scrolling_background(first_load = False):
     Areas.changed = False
     #當前區域座標
     global current_coord_x
-    current_coord_x = Player_location.coord_x - (Areas.area - 1) * 1000
+    current_coord_x = Player_location.coord_x - (Areas.area - 1) * 900
     player_move_count_temp = Player_location.coord_x
     #計算背景位置
-    if (Areas.lock_left and current_coord_x <= 500) or (Areas.lock_right and current_coord_x >= 500) or (Areas.lock_left and Areas.lock_right):
+    if (Areas.lock_left and current_coord_x <= 450) or (Areas.lock_right and current_coord_x >= 450) or (Areas.lock_left and Areas.lock_right):
         background_location_x = 0
         Player_location.player_move = True
         player.rect.x = current_coord_x
-    elif ((Areas.lock_left and current_coord_x > 500) or (Areas.lock_right and current_coord_x < 500) or (Areas.lock_right == False and Areas.lock_left == False)) and not (Areas.lock_left and Areas.lock_right):
-        background_location_x = -(Player_location.coord_x - ((Areas.area - 1) * 1000) - 500 - Player_location.background_moving)
+    elif ((Areas.lock_left and current_coord_x > 450) or (Areas.lock_right and current_coord_x < 450) or (Areas.lock_right == False and Areas.lock_left == False)) and not (Areas.lock_left and Areas.lock_right):
+        background_location_x = -(Player_location.coord_x - ((Areas.area - 1) * 900) - 450 - Player_location.background_moving)
         Player_location.player_move = False
-        player.rect.x = 500
+        player.rect.x = 450
 
     #畫出背景
     #下一個區域
-    if background_location_x < 0 and Areas.lock_right == False and current_coord_x > 500:
-        draw_img(screen, background_forward_img, background_location_x + 1000, background_location_y)
+    if background_location_x < 0 and Areas.lock_right == False and current_coord_x > 450:
+        draw_img(screen, background_forward_img, background_location_x + 900, background_location_y)
     #當前區域
     draw_img(screen, background_img, background_location_x, 0)
     #上一個區域
     if background_location_x > 0 and Areas.lock_left == False and current_coord_x < 500:
-        draw_img(screen, background_backward_img, background_location_x - 1000, 0)
+        draw_img(screen, background_backward_img, background_location_x - 900, 0)
 
 player_name = "Player"
 
@@ -246,44 +249,38 @@ class Player(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.name = player_name
-        self.image = player_imgs[1]
+        self.image = empty_button_img
         self.rect = self.image.get_rect()
-        self.rect.x = 500
-        self.rect.y = GROUND - 100
+        self.rect.x = 0
+        self.rect.y = GROUND - 180
         self.facing = 1
-        self.speed = 10
+        self.speed = 2
         self.jump_time = 0
         self.jump_height = 0
         self.fall_speed = 1
         self.velocity = 0
+        self.image_frame = 1
+        self.moving_tick = 0
     
     def update(self):
-        self.image = pygame.transform.flip(player_imgs[1], self.facing == -1, False)
+        if self.moving_tick % 15 == 0:
+            self.image_frame += 1
+            if self.image_frame > 3:
+                self.image_frame = 1
+        self.image = pygame.transform.flip(player_imgs[self.image_frame], self.facing == -1, False)
         key_pressed = pygame.key.get_pressed()
         #移動
         self.move_distant = max(self.speed, 0)
         if key_pressed[pygame.K_d] and Player_location.disable_move == False and Player_location.dash_distance == 0:
             self.facing = 1
             if player.rect.right + self.move_distant <= WIDTH: Player_location.x_move += self.move_distant
-        if key_pressed[pygame.K_a] and Player_location.disable_move == False and Player_location.dash_distance == 0:
+            self.moving_tick += 1
+        elif key_pressed[pygame.K_a] and Player_location.disable_move == False and Player_location.dash_distance == 0:
             self.facing = -1
             if player.rect.left - self.move_distant >= 0: Player_location.x_move -= self.move_distant
-        #跳躍
-        if key_pressed[pygame.K_SPACE] and Player_location.disable_jump == False and player.jump_time > 0:
-            if player.jump_height <= 200:
-                player.rect.y -= 20
-                player.jump_height += 20
-        #重製跳躍次數
-        if self.rect.y == GROUND - 100:
-            self.jump_time = 1
-            Player_location.midair_dash = 1
-        #重力加速度
-        if self.rect.y < GROUND - 100 and Player_location.anti_gravity == False and not 0 < self.jump_height < 150 and Player_location.dash_distance == 0 or Player_location.disable_ground:
-            self.velocity += (GRAVITY * 1 / 20) * self.fall_speed
-            self.rect.y += round(self.velocity)
-            self.rect.y = GROUND - 100
-            self.velocity = 0
-            self.jump_height = 0
+            self.moving_tick += 1
+        else:
+            self.image_frame = 1
 
 #玩家位置
 class Player_location:
@@ -330,6 +327,11 @@ class Mouse():
         self.x = 0
         self.y = 0
 
+#除錯資訊
+class Info():
+    def __init__(self):
+        self.open = False
+
 all_sprites = pygame.sprite.Group()
 player = Player()
 all_sprites.add(player)
@@ -355,8 +357,11 @@ Areas.use = False
 Areas.lock_right = False
 Areas.lock_left = True
 Areas.changed = True
+
 Mouse.x = 0
 Mouse.y = 0
+
+Info.open = False
 
 first_time_load_scrolling_background = True
 
@@ -396,6 +401,28 @@ while running:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_f:
                 Areas.use = True  # 使用
+            if event.key == pygame.K_F3:#角色屬性
+                if Info.open == False:
+                    Info.open = True
+                else:
+                    Info.open = False
+
+    if Info.open:
+        #顯示座標資訊
+        draw_color_text(screen, "座標: " + str(Player_location.coord_x // 10), 20, 50, 300, BLACK)
+        draw_color_text(screen, "背景: " + str(background_location_x // 10), 20, 50, 330, BLACK)
+        draw_color_text(screen, "區域: " + str(Areas.area), 20, 50, 360, BLACK)
+        draw_color_text(screen, "區域座標: " + str(current_coord_x), 20, 50, 390, BLACK)
+        if Areas.lock_left:draw_color_text(screen, "邊界:左邊", 20, 50, 420, BLACK)
+        if Areas.lock_right:draw_color_text(screen, "邊界:右邊", 20, 50, 450, BLACK)
+
+    if Areas.area == 1:
+        Areas.lock_left = True
+        draw_img(screen, car_img, 300, 300)
+    if Areas.area == 3:
+        Areas.lock_right = True
+    
+
     pygame.display.flip()
 
 pygame.quit()
