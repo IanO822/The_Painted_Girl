@@ -115,6 +115,9 @@ for i in range(3):
 
 #物件
 car_img = import_img("car", True, 2.5)
+lamp_1_img = import_img("lamp", True, 1)
+lamp_2_img = import_img("lamp_", True, 1)
+grass_img = import_img("grass", True, 1)
 
 #背景
 area_background_imgs = {}
@@ -243,6 +246,11 @@ def scrolling_background(first_load = False):
     if background_location_x > 0 and Areas.lock_left == False and current_coord_x < 500:
         draw_img(screen, background_backward_img, background_location_x - 900, 0)
 
+#傳送
+def teleport(coord_x, coord_y = None):
+    Player_location.coord_x = coord_x
+    if coord_y != None:
+        player.rect.y = coord_y
 player_name = "Player"
 
 class Player(pygame.sprite.Sprite):
@@ -254,7 +262,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = 0
         self.rect.y = GROUND - 180
         self.facing = 1
-        self.speed = 2
+        self.speed = 1
         self.jump_time = 0
         self.jump_height = 0
         self.fall_speed = 1
@@ -266,7 +274,7 @@ class Player(pygame.sprite.Sprite):
         if self.moving_tick % 15 == 0:
             self.image_frame += 1
             if self.image_frame > 3:
-                self.image_frame = 1
+                self.image_frame = 2
         self.image = pygame.transform.flip(player_imgs[self.image_frame], self.facing == -1, False)
         key_pressed = pygame.key.get_pressed()
         #移動
@@ -390,10 +398,6 @@ while running:
     scrolling_background(first_time_load_scrolling_background)
     first_time_load_scrolling_background = False
 
-    # 在這裡畫角色、NPC 等遊戲內容
-    all_sprites.update()
-    all_sprites.draw(screen)
-
     # 取得輸入
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -416,12 +420,23 @@ while running:
         if Areas.lock_left:draw_color_text(screen, "邊界:左邊", 20, 50, 420, BLACK)
         if Areas.lock_right:draw_color_text(screen, "邊界:右邊", 20, 50, 450, BLACK)
 
+    summon_npc(300, 50, {}, "", lamp_1_img, "WHITE")
+    summon_npc(600, 50, {}, "", lamp_1_img, "WHITE")
+    summon_npc(900, 50, {}, "", lamp_1_img, "WHITE")
+    summon_npc(0, 220, {}, "", grass_img)
+    summon_npc(960, 220, {}, "", grass_img)
+    summon_npc(500, 250, {}, "", car_img)
+    # 在這裡畫角色、NPC 等遊戲內容
+    all_sprites.update()
+    all_sprites.draw(screen)
+    dark_overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)  # 建立具透明通道的Surface
+    dark_overlay.fill((0, 0, 0, 128))  # RGB(0,0,0)，透明度128（約為50%不透明）
+    screen.blit(dark_overlay, (0, 0))
+
     if Areas.area == 1:
         Areas.lock_left = True
-        draw_img(screen, car_img, 300, 300)
     if Areas.area == 3:
         Areas.lock_right = True
-    
 
     pygame.display.flip()
 
