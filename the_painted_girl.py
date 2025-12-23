@@ -7,7 +7,6 @@ import random
 import math
 import datetime
 import time
-import numpy as np
 import copy
 
 #基本定義
@@ -16,8 +15,7 @@ WIDTH = 960
 HEIGHT = 540
 GRAVITY = 10
 GROUND = 450
-LORE_WIDTH = 500
-LORE_HEIGHT = 500
+AREA_LENGTH = 960
 #顏色
 BLACK = 0, 0, 0
 WHITE = 255, 255, 255
@@ -71,7 +69,7 @@ try:
 except:
     None
 #全螢幕
-FULLSCREEN = True
+FULLSCREEN = False
 
 if FULLSCREEN:
     info = pygame.display.Info()
@@ -85,8 +83,8 @@ else:
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
 new_width = int(WIDTH * scale)
 new_height = int(HEIGHT * scale)
-x_offset = (SCREEN_WIDTH - new_width) // 2
-y_offset = (SCREEN_HEIGHT - new_height) // 2
+x_offset = (SCREEN_WIDTH - new_width) / 2
+y_offset = (SCREEN_HEIGHT - new_height) / 2
 #標題
 pygame.display.set_caption("The Painted Girl")
 #pygame.display.set_icon(pygame.image.load(os.path.join("resource", "Finding The Light Logo.png")).convert_alpha())
@@ -109,8 +107,10 @@ def import_img(img_name, removeBG=True, scale=1):
 player_imgs = {}
 agent_imgs = {}
 
-for i in range(3):
+for i in range(6):
     player_imgs.update({i+1:import_img("player_"+ str(i+1), True, 0.2)})
+
+for i in range(3):
     agent_imgs.update({i+1:import_img("agent_"+ str(i+1))})
 
 #物件
@@ -121,7 +121,7 @@ grass_img = import_img("grass", True, 1)
 
 #背景
 area_background_imgs = {}
-for i in range(4):
+for i in range(-1,4):
     area_background_imgs.update({str(i):import_img("area_" + str(i))})
 
 #按鈕
@@ -147,6 +147,28 @@ def draw_color_text(surf, text, size, x, y, color):
     text_rect.centerx = x
     text_rect.top = y
     surf.blit(text_surface, text_rect)
+
+#淡入/淡出
+def fade_out(screen, clock, duration):
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    start = pygame.time.get_ticks()
+    while (t := pygame.time.get_ticks() - start) < duration:
+        alpha = int(255 * t / duration)
+        overlay.fill((0, 0, 0, alpha))
+        screen.blit(overlay, (0, 0))
+        pygame.display.flip()
+        clock.tick(60)
+
+
+def fade_in(screen, clock, duration):
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    start = pygame.time.get_ticks()
+    while (t := pygame.time.get_ticks() - start) < duration:
+        alpha = 255 - int(255 * t / duration)
+        overlay.fill((0, 0, 0, alpha))
+        screen.blit(overlay, (0, 0))
+        pygame.display.flip()
+        clock.tick(60)
 
 #外框字
 def outline_text(text, size, x, y, color):
@@ -205,7 +227,7 @@ def scrolling_background(first_load = False):
         background_location_y = 0
         player_move_count_temp = 0
     #檢測更換區域
-    new_area = (Player_location.coord_x // 900) + 1
+    new_area = (Player_location.coord_x // AREA_LENGTH) + 1
     if Areas.area != new_area:
         Areas.area = new_area
         Areas.lock_right = False
@@ -224,27 +246,27 @@ def scrolling_background(first_load = False):
     Areas.changed = False
     #當前區域座標
     global current_coord_x
-    current_coord_x = Player_location.coord_x - (Areas.area - 1) * 900
+    current_coord_x = Player_location.coord_x - (Areas.area - 1) * AREA_LENGTH
     player_move_count_temp = Player_location.coord_x
     #計算背景位置
-    if (Areas.lock_left and current_coord_x <= 450) or (Areas.lock_right and current_coord_x >= 450) or (Areas.lock_left and Areas.lock_right):
+    if (Areas.lock_left and current_coord_x <= AREA_LENGTH / 2) or (Areas.lock_right and current_coord_x >= AREA_LENGTH / 2) or (Areas.lock_left and Areas.lock_right):
         background_location_x = 0
         Player_location.player_move = True
         player.rect.x = current_coord_x
-    elif ((Areas.lock_left and current_coord_x > 450) or (Areas.lock_right and current_coord_x < 450) or (Areas.lock_right == False and Areas.lock_left == False)) and not (Areas.lock_left and Areas.lock_right):
-        background_location_x = -(Player_location.coord_x - ((Areas.area - 1) * 900) - 450 - Player_location.background_moving)
+    elif ((Areas.lock_left and current_coord_x > AREA_LENGTH / 2) or (Areas.lock_right and current_coord_x < AREA_LENGTH / 2) or (Areas.lock_right == False and Areas.lock_left == False)) and not (Areas.lock_left and Areas.lock_right):
+        background_location_x = -(Player_location.coord_x - ((Areas.area - 1) * AREA_LENGTH) - (AREA_LENGTH / 2) - Player_location.background_moving)
         Player_location.player_move = False
-        player.rect.x = 450
+        player.rect.x = AREA_LENGTH / 2
 
     #畫出背景
     #下一個區域
-    if background_location_x < 0 and Areas.lock_right == False and current_coord_x > 450:
-        draw_img(screen, background_forward_img, background_location_x + 900, background_location_y)
+    if background_location_x < 0 and Areas.lock_right == False and current_coord_x > AREA_LENGTH / 2:
+        draw_img(screen, background_forward_img, background_location_x + AREA_LENGTH, background_location_y)
     #當前區域
     draw_img(screen, background_img, background_location_x, 0)
     #上一個區域
-    if background_location_x > 0 and Areas.lock_left == False and current_coord_x < 500:
-        draw_img(screen, background_backward_img, background_location_x - 900, 0)
+    if background_location_x > 0 and Areas.lock_left == False and current_coord_x < AREA_LENGTH / 2:
+        draw_img(screen, background_backward_img, background_location_x - AREA_LENGTH, 0)
 
 #傳送
 def teleport(coord_x, coord_y = None):
@@ -262,33 +284,36 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = 0
         self.rect.y = GROUND - 180
         self.facing = 1
-        self.speed = 1
+        self.speed = 5
         self.jump_time = 0
         self.jump_height = 0
         self.fall_speed = 1
         self.velocity = 0
-        self.image_frame = 1
-        self.moving_tick = 0
+        self.image_frame = 5
+        self.moving_tick = 1
     
     def update(self):
         if self.moving_tick % 15 == 0:
             self.image_frame += 1
-            if self.image_frame > 3:
-                self.image_frame = 2
+            if self.image_frame > 5:
+                self.image_frame = 1
         self.image = pygame.transform.flip(player_imgs[self.image_frame], self.facing == -1, False)
         key_pressed = pygame.key.get_pressed()
         #移動
         self.move_distant = max(self.speed, 0)
         if key_pressed[pygame.K_d] and Player_location.disable_move == False and Player_location.dash_distance == 0:
             self.facing = 1
-            if player.rect.right + self.move_distant <= WIDTH: Player_location.x_move += self.move_distant
+            if player.rect.right - 110 + self.move_distant <= WIDTH: Player_location.x_move += self.move_distant
             self.moving_tick += 1
         elif key_pressed[pygame.K_a] and Player_location.disable_move == False and Player_location.dash_distance == 0:
             self.facing = -1
             if player.rect.left - self.move_distant >= 0: Player_location.x_move -= self.move_distant
             self.moving_tick += 1
         else:
-            self.image_frame = 1
+            if Areas.area == 1 and 350 <= Player_location.coord_x <= 500:
+                self.image_frame = 6
+            else:
+                self.image_frame = 5
 
 #玩家位置
 class Player_location:
@@ -375,6 +400,8 @@ first_time_load_scrolling_background = True
 
 running = True
 
+
+
 while running:
     clock.tick(FPS)
     # 取得游標位置
@@ -411,29 +438,39 @@ while running:
                 else:
                     Info.open = False
 
+
     if Info.open:
         #顯示座標資訊
-        draw_color_text(screen, "座標: " + str(Player_location.coord_x // 10), 20, 50, 300, BLACK)
-        draw_color_text(screen, "背景: " + str(background_location_x // 10), 20, 50, 330, BLACK)
-        draw_color_text(screen, "區域: " + str(Areas.area), 20, 50, 360, BLACK)
-        draw_color_text(screen, "區域座標: " + str(current_coord_x), 20, 50, 390, BLACK)
-        if Areas.lock_left:draw_color_text(screen, "邊界:左邊", 20, 50, 420, BLACK)
-        if Areas.lock_right:draw_color_text(screen, "邊界:右邊", 20, 50, 450, BLACK)
+        draw_color_text(screen, "座標: " + str(Player_location.coord_x // 10), 20, 50, 300, WHITE)
+        draw_color_text(screen, "背景: " + str(background_location_x // 10), 20, 50, 330, WHITE)
+        draw_color_text(screen, "區域: " + str(Areas.area), 20, 50, 360, WHITE)
+        draw_color_text(screen, "區域座標: " + str(current_coord_x), 20, 50, 390, WHITE)
+        if Areas.lock_left:draw_color_text(screen, "邊界:左邊", 20, 50, 420, WHITE)
+        if Areas.lock_right:draw_color_text(screen, "邊界:右邊", 20, 50, 450, WHITE)
 
-    summon_npc(300, 50, {}, "", lamp_1_img, "WHITE")
-    summon_npc(600, 50, {}, "", lamp_1_img, "WHITE")
-    summon_npc(900, 50, {}, "", lamp_1_img, "WHITE")
-    summon_npc(0, 220, {}, "", grass_img)
-    summon_npc(960, 220, {}, "", grass_img)
-    summon_npc(500, 250, {}, "", car_img)
+    # summon_npc(300, 50, {}, "", lamp_1_img, "WHITE")
+    # summon_npc(600, 50, {}, "", lamp_1_img, "WHITE")
+    # summon_npc(900, 50, {}, "", lamp_1_img, "WHITE")
+    # summon_npc(0, 220, {}, "", grass_img)
+    # summon_npc(960, 220, {}, "", grass_img)
+    #summon_npc(500, 250, {}, "", car_img)
     # 在這裡畫角色、NPC 等遊戲內容
     all_sprites.update()
     all_sprites.draw(screen)
     dark_overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)  # 建立具透明通道的Surface
     dark_overlay.fill((0, 0, 0, 128))  # RGB(0,0,0)，透明度128（約為50%不透明）
-    screen.blit(dark_overlay, (0, 0))
+    #screen.blit(dark_overlay, (0, 0))
 
     if Areas.area == 1:
+        player.rect.y = 420
+        Areas.lock_left = True
+        Areas.lock_right = True
+        if Player_location.coord_x >= 920:
+            fade_out(screen, clock, 1000)
+            teleport(980)
+
+    if Areas.area == 2:
+        player.rect.y = GROUND - 180
         Areas.lock_left = True
     if Areas.area == 3:
         Areas.lock_right = True
